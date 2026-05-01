@@ -1,0 +1,16 @@
+[project]
+name = "ecom-storage"
+version = "0.1.0"
+description = "Shared MinIO storage layer for the ecommerce-ai-platform monorepo."
+requires-python = ">=3.12"
+dependencies = [
+    "minio>=7.0",
+    "Pillow>=10.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ecom_storage"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,11 @@
+[project]
+name = "ecom-ai-monorepo"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = ["apps/*", "apps/packages/*"]
+exclude = ["apps/packages"]
+
+[tool.uv]
+package = false
