@@ -2,18 +2,18 @@ version: '3.8'
 
 services:
   # 1. PostgreSQL with pgvector (Primary metadata & Relations)
-  # postgres:
-  #   image: ankane/pgvector:latest
-  #   container_name: ecom-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: ${POSTGRES_USER}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${POSTGRES_DB}
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: ecom-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   # 2. Qdrant (High-performance Vector Search for AI)
   # qdrant:
@@ -67,11 +67,13 @@ services:
       - IMAGE_UPLOAD_TEMP_BUCKET=${IMAGE_UPLOAD_TEMP_BUCKET}
       - IMAGE_UPLOAD_PRODUCT_BUCKET=${IMAGE_UPLOAD_PRODUCT_BUCKET}
       - MINIO_SECURE=false
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       - minio
+      - postgres
 
 volumes:
-  # pgdata:
+  pgdata:
   # qdrantdata:
   # redisdata:
   miniodata:
