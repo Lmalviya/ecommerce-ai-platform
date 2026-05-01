@@ -1,0 +1,11 @@
+{
+  "name": "search-service",
+  "scripts": {
+    "dev": "uv run uvicorn src.main:app --reload",
+    "lint": "uvx ruff check .",
+    "test": "uv run pytest"
+  },
+  "prisma": {
+    "schema": "../../db/prisma/schema"
+  }
+}

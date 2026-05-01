@@ -1,0 +1,14 @@
+[project]
+name = "ecom-shared"
+version = "0.1.0"
+dependencies = [
+    "pydantic>=2.0",
+    "redis",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ecom_shared"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
