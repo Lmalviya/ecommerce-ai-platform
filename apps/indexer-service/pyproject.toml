@@ -1,0 +1,22 @@
+[project]
+name = "indexer-service"
+version = "0.1.0"
+description = "Scalable product indexing service"
+requires-python = ">=3.12"
+dependencies = [
+    "celery[redis]>=5.3.6",
+    "redis>=5.0.1",
+    "psycopg[binary]>=3.1.13",
+    "pandas>=2.1.4",
+    "s3fs>=2023.12.2",
+    "pyarrow>=14.0.1",
+    "openpyxl>=3.1.2",
+    "pydantic>=2.5.3",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+ecom-image = { workspace = true }
