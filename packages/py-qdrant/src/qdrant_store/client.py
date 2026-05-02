@@ -46,7 +46,8 @@ class AsyncQdrantStore:
     async def create_collection(
         self, 
         name: str, 
-        vectors_config: Union[Dict[str, VectorParams], VectorParams]
+        vectors_config: Union[Dict[str, VectorParams], VectorParams],
+        sparse_vectors_config: Optional[Dict[str, Any]] = None
     ):
         """Creates a collection asynchronously, with an existence check."""
         if await self.collection_exists(name):
@@ -61,11 +62,19 @@ class AsyncQdrantStore:
                 DistanceMetric.MANHATTAN: rest.Distance.MANHATTAN
             }
 
+            q_quant = None
             if isinstance(vectors_config, VectorParams):
                 q_config = rest.VectorParams(
                     size=vectors_config.size,
                     distance=dist_map.get(vectors_config.distance, rest.Distance.COSINE)
                 )
+                if vectors_config.use_scalar_quantization:
+                    q_quant = rest.ScalarQuantization(
+                        scalar=rest.ScalarQuantizationConfig(
+                            type=rest.ScalarType.INT8,
+                            always_ram=True
+                        )
+                    )
             else:
                 q_config = {
                     v_name: rest.VectorParams(
@@ -73,8 +82,26 @@ class AsyncQdrantStore:
                         distance=dist_map.get(v_params.distance, rest.Distance.COSINE)
                     ) for v_name, v_params in vectors_config.items()
                 }
+                if any(v.use_scalar_quantization for v in vectors_config.values()):
+                    q_quant = rest.ScalarQuantization(
+                        scalar=rest.ScalarQuantizationConfig(
+                            type=rest.ScalarType.INT8,
+                            always_ram=True
+                        )
+                    )
+            
+            q_sparse = None
+            if sparse_vectors_config:
+                q_sparse = {
+                    v_name: rest.SparseVectorParams() for v_name in sparse_vectors_config.keys()
+                }
 
-            await self.client.create_collection(collection_name=name, vectors_config=q_config)
+            await self.client.create_collection(
+                collection_name=name, 
+                vectors_config=q_config,
+                sparse_vectors_config=q_sparse,
+                quantization_config=q_quant
+            )
             logger.info("collection_created", collection=name)
         except Exception as e:
             logger.error("collection_creation_failed", collection=name, error=str(e))

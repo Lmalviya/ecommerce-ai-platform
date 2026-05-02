@@ -14,10 +14,15 @@ class PayloadIndexType(str, Enum):
     FLOAT = "float"
     TEXT = "text"
 
+class SparseVectorParams(BaseModel):
+    """Configuration for a sparse vector."""
+    modifier: Optional[str] = None
+
 class VectorParams(BaseModel):
     """Configuration for a vector (size and distance metric)."""
     size: int
     distance: DistanceMetric = DistanceMetric.COSINE
+    use_scalar_quantization: bool = False
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -25,7 +30,7 @@ class VectorPoint(BaseModel, Generic[T]):
     """Standardized point for upserting into Qdrant."""
     id: Union[str, int]
     vector: Optional[List[float]] = None
-    vectors: Optional[Dict[str, List[float]]] = None
+    vectors: Optional[Dict[str, Any]] = None
     payload: T
 
 class SearchResult(BaseModel, Generic[T]):

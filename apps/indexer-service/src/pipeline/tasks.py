@@ -1,5 +1,7 @@
 import logging
+import asyncio
 from celery import Task
+from celery.signals import worker_process_init
 from .celery_app import app
 
 # Import our stages and connectors
@@ -8,11 +10,27 @@ from src.models import ProductDraft
 from connector.postgres import PostgresConnector
 from connector.file_connector import FileConnector
 from connector.cursor_store import CursorStore
+from .orchestrator import IndexingPipeline
 
-# Lesson 8: Singleton Pattern for stages
-# We initialize the cleaner ONCE at the top. 
-# This way, the worker doesn't waste time recreating it for every product.
-cleaner = ProductCleaner()
+# Singletons initialized once per worker process
+cleaner = None
+pipeline_orchestrator = None
+
+@worker_process_init.connect
+def init_worker(**kwargs):
+    """
+    Initialize heavy objects once per worker process.
+    This prevents recreating AI connection pools per task.
+    """
+    global cleaner, pipeline_orchestrator
+    logging.info("Initializing worker singletons...")
+    cleaner = ProductCleaner()
+    pipeline_orchestrator = IndexingPipeline()
+    # We must ensure Qdrant collections exist before processing starts
+    try:
+        asyncio.run(pipeline_orchestrator.initialize_infrastructure())
+    except Exception as e:
+        logging.error(f"Failed to initialize Qdrant infra: {e}")
 
 class PipelineTask(Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -21,22 +39,24 @@ class PipelineTask(Task):
     def on_success(self, retval, task_id, args, kwargs):
         logging.info(f"Task {task_id} completed successfully")
 
-@app.task(base=PipelineTask, bind=True, name="process_single_product")
-def process_single_product(self, product_data: dict):
+@app.task(base=PipelineTask, bind=True, name="process_product_batch")
+def process_product_batch(self, products_data: list[dict]):
     """
-    Stage 2 & beyond: The Worker Task.
+    Stage 2 & beyond: The Worker Task processing a BATCH of products.
     """
-    # 1. Ingest: Convert raw dict back to our Python Model
-    draft = ProductDraft(**product_data)
+    drafts = []
+    for data in products_data:
+        # 1. Ingest
+        draft = ProductDraft(**data)
+        # 2. Clean (from existing pipeline stages)
+        draft = cleaner.process(draft)
+        drafts.append(draft)
     
-    # 2. Clean: Strip HTML and fix text
-    draft = cleaner.process(draft)
+    # 3. Embed & Index (Async pipeline execution wrapped for Celery)
+    summary = asyncio.run(pipeline_orchestrator.process_batch(drafts))
     
-    # Log progress
-    logging.info(f"Cleaned product: {draft.title}")
-    
-    # Return the data as a dict for Celery to store in the backend
-    return draft.model_dump()
+    logging.info(f"Batch processed: {summary['total_processed']} items. Cost: {summary['total_cost']}")
+    return summary
 
 @app.task(name="start_bulk_ingestion")
 def start_bulk_ingestion(connector_type: str, config: dict):
@@ -45,10 +65,8 @@ def start_bulk_ingestion(connector_type: str, config: dict):
     """
     logging.info(f"Orchestrating bulk ingestion via {connector_type}")
     
-    # 1. Setup the Cursor (The "Bookmark")
     cursor_store = CursorStore()
     
-    # 2. Initialize the correct Connector
     if connector_type == "postgres":
         connector = PostgresConnector(
             connector_id=config.get("id", "pg-main"),
@@ -65,11 +83,27 @@ def start_bulk_ingestion(connector_type: str, config: dict):
     else:
         raise ValueError(f"Unknown connector type: {connector_type}")
 
-    # 3. Pull items and "Distribute" the work
-    count = 0
-    for draft in connector.fetch_items(limit=config.get("limit", 100)):
-        # .delay() is the magic. It sends the product to the workers!
-        process_single_product.delay(draft.model_dump())
-        count += 1
+    # 3. Pull items, Chunk them, and "Distribute" the work
+    batch_size = config.get("batch_size", 50)
+    limit = config.get("limit", 1000)
     
-    return {"status": "queued", "total_items": count}
+    items = connector.fetch_items(limit=limit)
+    
+    total_queued = 0
+    current_batch = []
+    
+    # Process items in batches to optimize worker throughput
+    for draft in items:
+        current_batch.append(draft.model_dump())
+        if len(current_batch) >= batch_size:
+            # .delay() sends the batch to the workers!
+            process_product_batch.delay(current_batch)
+            total_queued += len(current_batch)
+            current_batch = []
+            
+    # Flush the remainder
+    if current_batch:
+        process_product_batch.delay(current_batch)
+        total_queued += len(current_batch)
+    
+    return {"status": "queued", "total_items": total_queued}
