@@ -14,18 +14,18 @@ class Settings(BaseSettings):
     )
 
     # API Keys (Using SecretStr to avoid accidental logging)
-    openai_api_key: Optional[SecretStr] = None
-    anthropic_api_key: Optional[SecretStr] = None
-    google_api_key: Optional[SecretStr] = None
+    openai_api_key: Optional[SecretStr] = Field(None, env="OPENAI_API_KEY", description="OpenAI API key")
+    anthropic_api_key: Optional[SecretStr] = Field(None, env="ANTHROPIC_API_KEY", description="Anthropic API key")
+    google_api_key: Optional[SecretStr] = Field(None, env="GOOGLE_API_KEY", description="Google API key")
     
     # Defaults
-    default_text_model: str = Field(default="gpt-4o-mini")
-    default_embedding_model: str = Field(default="text-embedding-3-small")
-    default_api_base: Optional[str] = Field(default="https://api.openai.com/v1")
+    default_text_model: str = Field(..., env="GENERATOR_MODEL", description="Default text generation model")
+    default_embedding_model: str = Field(..., env="EMBEDDER_MODEL", description="Default embedding model")
+    default_api_base: Optional[str] = Field(..., env="API_BASE", description="Default API base")
     
     # Resilience
-    max_retries: int = 3
-    timeout_seconds: float = 60.0
+    max_retries: Optional[int] = Field(3, env="MAX_RETRIES", description="Default max retries")
+    timeout_seconds: Optional[float] = Field(60.0, env="TIMEOUT", description="Default timeout")
 
 # Singleton instance to be used across the package
 settings = Settings()
