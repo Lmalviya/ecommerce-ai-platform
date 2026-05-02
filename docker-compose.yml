@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Infrastructure
+  # ==========================================
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: ecommerce_platform # This will be created by default
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-dbs.sql:/docker-entrypoint-initdb.d/init.sql # Init script to create the second DB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ecommerce_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ==========================================
+  # Applications
+  # ==========================================
+  platform-api:
+    build:
+      context: .
+      dockerfile: apps/platform-api/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    environment:
+      - PLATFORM_DB_URL=postgresql://admin:admin123@postgres:5432/ecommerce_platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  connector-worker:
+    build:
+      context: .
+      dockerfile: apps/connector-worker/Dockerfile
+    env_file:
+      - .env.example
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - API_BASE_URL=http://platform-api:8000/api/v1
+    depends_on:
+      redis:
+        condition: service_healthy
+      platform-api:
+        condition: service_started
+
+  indexer-worker:
+    build:
+      context: .
+      dockerfile: apps/indexer-worker/Dockerfile
+    env_file:
+      - .env.example
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - API_BASE_URL=http://platform-api:8000/api/v1
+      - TARGET_DB_URL=postgresql://admin:admin123@postgres:5432/ecommerce_data
+      - QDRANT_URL=http://qdrant:6333
+      - DEST_MINIO_ENDPOINT=minio:9000
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      platform-api:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  minio_data:

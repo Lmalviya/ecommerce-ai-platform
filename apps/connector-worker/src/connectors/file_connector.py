@@ -1,8 +1,6 @@
 import os
 import pandas as pd
 from typing import Generator, Dict, Any
-from ecom_image import ImageProcessor, ImageStorage
-
 from .base import BaseConnector
 from .cursor_store import CursorStore
 from src.models import ProductDraft
@@ -24,7 +22,6 @@ class FileConnector(BaseConnector):
         self.file_path = file_path
         self.cursor_store = cursor_store
         self.mapping = column_mapping
-        self.img_processor = self._init_image_processor()
 
     def fetch_items(self, chunk_size: int = 500) -> Generator[ProductDraft, None, None]:
         """Reads the file in chunks and yields mapped ProductDrafts."""
@@ -114,6 +111,6 @@ class FileConnector(BaseConnector):
             features=get_val("features", []),
         )
 
-        return self._process_image_for_draft(draft)
+        return draft
 
     

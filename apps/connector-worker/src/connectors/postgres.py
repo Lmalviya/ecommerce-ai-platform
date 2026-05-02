@@ -2,9 +2,6 @@ import os
 import psycopg
 from psycopg.rows import dict_row
 from typing import Generator, Dict, Any, Optional
-from ecom_image import ImageProcessor
-from ecom_image.storage import ImageStorage
-
 from .base import BaseConnector
 from .cursor_store import CursorStore
 from src.models import ProductDraft
@@ -22,7 +19,6 @@ class PostgresConnector(BaseConnector):
         self.cursor_store = cursor_store
         self.db_url = db_url # The URL of the source database
         self._conn = None
-        self.img_processor = self._init_image_processor()
 
     def _get_connection(self):
         """ Creates a connection to the source database """
@@ -81,9 +77,4 @@ class PostgresConnector(BaseConnector):
             features=row.get("features", []),
         )
 
-        return self._get_processed_image(draft)
-                
-            
-
-
-                
+        return draft

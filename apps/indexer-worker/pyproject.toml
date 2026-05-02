@@ -1,5 +1,5 @@
 [project]
-name = "indexer-service"
+name = "indexer-worker"
 version = "0.1.0"
 description = "Scalable product indexing service"
 requires-python = ">=3.12"

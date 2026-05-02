@@ -1,0 +1,18 @@
+[project]
+name = "connector-worker"
+version = "0.1.0"
+description = "Fetches data from external sources and pushes to the indexing queue."
+requires-python = ">=3.12"
+dependencies = [
+    "celery>=5.3.6",
+    "redis>=5.0.1",
+    "pydantic>=2.5.3",
+    "structlog>=24.1.0",
+]
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+ecom-storage = { workspace = true }
+py-shared = { workspace = true }
