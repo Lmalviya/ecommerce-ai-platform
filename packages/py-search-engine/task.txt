@@ -1,0 +1,12 @@
+Purpose: The "Conductor." It coordinates between the AI models and the Qdrant database.
+
+🛠️ Key Components:
+SearchOrchestrator:
+The main entry point for your Search API.
+It takes a user query (e.g., "blue running shoes").
+It calls py-ai-models to get a vector.
+It calls py-qdrant to get matches.
+FusionEngine:
+RRF (Reciprocal Rank Fusion): A mathematical way to merge "Keyword" results and "Semantic" results into one perfect list.
+ReRanker:
+Takes the top 50 results and uses a heavy AI model (Cross-Encoder) to double-check the order for maximum accuracy.
