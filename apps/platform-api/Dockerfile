@@ -9,7 +9,7 @@ RUN pip install uv
 COPY . .
 
 # Sync dependencies for the workspace
-RUN uv sync --all-packages
+RUN uv sync --package platform-api
 
 # Set the working directory to the specific app
 WORKDIR /app/apps/platform-api

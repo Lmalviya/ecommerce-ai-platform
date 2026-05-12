@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post("/connectors", response_model=ConnectorProfile)
 async def create_connector(profile: ConnectorProfileCreate):
-    client = PostgresClient.get_instance()
+    client = DatabaseClient.get_instance()
     sql = """
         INSERT INTO connector_profiles (name, type, config)
         VALUES (%(name)s, %(type)s, %(config)s)
@@ -32,14 +32,14 @@ async def create_connector(profile: ConnectorProfileCreate):
 
 @router.get("/connectors", response_model=List[ConnectorProfile])
 async def list_connectors():
-    client = PostgresClient.get_instance()
+    client = DatabaseClient.get_instance()
     with client.pool.connection() as conn:
         rows = conn.execute("SELECT * FROM connector_profiles ORDER BY created_at DESC").fetchall()
     return rows
 
 @router.post("/jobs", response_model=IngestionJob)
 async def trigger_job(payload: IngestionJobCreate):
-    client = PostgresClient.get_instance()
+    client = DatabaseClient.get_instance()
     
     # 1. Verify connector exists
     with client.pool.connection() as conn:
