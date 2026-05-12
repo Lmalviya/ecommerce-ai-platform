@@ -49,3 +49,11 @@ Currently, the API uses **Raw SQL** with `psycopg3` for maximum performance and 
 
 - **Database Client**: Managed as a singleton in `src/database.py`.
 - **Parameterization**: All queries use `%s` or `%(key)s` placeholders to prevent SQL Injection.
+
+## Security Considerations
+
+### Credential Handling
+Since the `platform-api` sends the full connector configuration (including database URLs and credentials) to the workers via Redis:
+1.  **Redis Security**: The Redis instance MUST be protected with a strong password and isolated within a private network.
+2.  **Transport Security**: In production, use TLS for communication between the API, Redis, and Workers.
+3.  **Credential Scoping**: It is recommended to use "Read-Only" database users for source connectors to minimize risk.

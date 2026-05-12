@@ -20,6 +20,7 @@ uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## 🛠 Features
 - **Connector Management**: Register and configure sources like Shopify, Amazon, or local files.
+- **Multi-Source Support**: Register unlimited unique data sources (e.g., multiple Postgres servers) and trigger jobs for each individually.
 - **Job Orchestration**: Trigger and monitor bulk data ingestion tasks.
 - **Structured Logging**: JSON-based logging for production observability.
 - **Auto-Provisioning**: Automatically creates required database tables on startup.

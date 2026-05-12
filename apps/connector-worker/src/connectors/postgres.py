@@ -13,11 +13,9 @@ class PostgresConnector(BaseConnector):
     using an incremental updated_at cursor.
     """
 
-    def __init__(self, connector_id: str, cursor_store: CursorStore, db_url: str):
-        super().__init__(connector_id)
-        
-        self.cursor_store = cursor_store
-        self.db_url = db_url # The URL of the source database
+    def __init__(self, config: Dict[str, Any], cursor_store: CursorStore):
+        super().__init__(config, cursor_store)
+        self.db_url = config.get("db_url")
         self._conn = None
 
     def _get_connection(self):

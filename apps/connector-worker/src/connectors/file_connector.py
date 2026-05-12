@@ -11,17 +11,10 @@ class FileConnector(BaseConnector):
     Uses Pandas for memory-efficient chunked reading.
     """
 
-    def __init__(
-        self, 
-        connector_id: str, 
-        cursor_store: CursorStore, 
-        file_path: str,
-        column_mapping: Dict[str, str]
-    ):
-        super().__init__(connector_id)
-        self.file_path = file_path
-        self.cursor_store = cursor_store
-        self.mapping = column_mapping
+    def __init__(self, config: Dict[str, Any], cursor_store: CursorStore):
+        super().__init__(config, cursor_store)
+        self.file_path = config.get("file_path")
+        self.mapping = config.get("mapping", {})
 
     def fetch_items(self, chunk_size: int = 500) -> Generator[ProductDraft, None, None]:
         """Reads the file in chunks and yields mapped ProductDrafts."""
