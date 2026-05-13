@@ -2,19 +2,35 @@ import logging
 import asyncio
 from celery import Task
 from celery.signals import worker_process_init
-from .celery_app import app
+from src.celery_app import app
 
 # Import our stages
 from .stages.clean import ProductCleaner
 from src.models import ProductDraft
 from .orchestrator import IndexingPipeline
-import requests
+import os
+API_BASE_URL = os.getenv("API_BASE_URL", "http://platform-api:8000/api/v1")
 
-API_BASE_URL = "http://localhost:8000/api/v1"
+from src.database import DatabaseClient
 
 # Singletons initialized once per worker process
 cleaner = None
 pipeline_orchestrator = None
+
+_CREATE_TARGET_SCHEMA = """
+CREATE TABLE IF NOT EXISTS products (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    brand           TEXT,
+    image_url       TEXT,
+    thumbnail_url   TEXT,
+    colors          TEXT[],
+    styles          TEXT[],
+    keywords        TEXT[],
+    bullet_points   TEXT[],
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+"""
 
 @worker_process_init.connect
 def init_worker(**kwargs):
@@ -24,6 +40,13 @@ def init_worker(**kwargs):
     """
     global cleaner, pipeline_orchestrator
     logging.info("Initializing worker singletons...")
+    
+    # Provision target table
+    client = DatabaseClient.get_instance()
+    with client.pool.connection() as conn:
+        conn.execute(_CREATE_TARGET_SCHEMA)
+        conn.commit()
+
     cleaner = ProductCleaner()
     pipeline_orchestrator = IndexingPipeline()
     # We must ensure Qdrant collections exist before processing starts
@@ -64,11 +87,11 @@ def process_product_batch(self, products_data: list[dict], job_id: str = None):
             logging.error(f"Cleaning failed for a product in batch: {e}")
             update_job_progress(job_id, 0, 1)
 
-    # 3. Embed & Index
-    summary = asyncio.run(pipeline_orchestrator.process_batch(drafts))
+    # 3. Ingest to Outbox (Atomic & Fast)
+    summary = asyncio.run(pipeline_orchestrator.ingest_to_outbox(drafts))
     
-    # Update progress in DB
+    # Update progress in DB (Note: This progress now means "Successfully queued for indexing")
     update_job_progress(job_id, len(summary["successful_ids"]), len(summary["failed_ids"]))
     
-    logging.info(f"Batch processed: {summary['total_processed']} items. Cost: {summary['total_cost']}")
+    logging.info(f"Batch queued to outbox: {summary['successful_ids']} items.")
     return summary

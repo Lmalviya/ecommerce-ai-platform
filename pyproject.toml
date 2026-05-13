@@ -4,8 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.12"
 
 [tool.uv.workspace]
-members = ["apps/*", "apps/packages/*"]
-exclude = ["apps/packages"]
+members = ["apps/*", "packages/*"]
+exclude = ["packages/py-search-engine"]
 
 [tool.uv]
 package = false

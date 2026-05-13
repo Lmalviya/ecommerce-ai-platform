@@ -11,6 +11,9 @@ dependencies = [
 ]
 requires-python = ">=3.10"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/py_ai_models"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

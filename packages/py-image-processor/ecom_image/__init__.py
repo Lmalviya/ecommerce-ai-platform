@@ -47,5 +47,6 @@ class ImageProcessor:
 
         return {
             "original_image_url": orig_url,
-            "thumbnail_image_url": thumb_url
+            "thumbnail_image_url": thumb_url,
+            "original_bytes": img_bytes
         }

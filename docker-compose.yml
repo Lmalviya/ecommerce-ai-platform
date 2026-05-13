@@ -112,6 +112,28 @@ services:
       minio:
         condition: service_healthy
 
+  indexer-relay:
+    build:
+      context: .
+      dockerfile: apps/indexer-worker/Dockerfile
+    command: ["uv", "run", "python", "-m", "src.pipeline.relay"]
+    env_file:
+      - .env.example
+    environment:
+      - TARGET_DB_URL=postgresql://admin:admin123@postgres:5432/ecommerce_data
+      - QDRANT_URL=http://qdrant:6333
+      - DEST_MINIO_ENDPOINT=minio:9000
+      - DEST_MINIO_ACCESS_KEY=admin
+      - DEST_MINIO_SECRET_KEY=minio123
+      - DEST_MINIO_BUCKET=products
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   qdrant_data:
